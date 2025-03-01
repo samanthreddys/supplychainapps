@@ -1,42 +1,29 @@
-import React, { useState } from 'react';
-import { TextField, Button, Box } from '@mui/material';
-import axios from 'axios';
+import React from 'react';
+import { Container, Box, Tabs, Tab } from '@mui/material';
+import ApplicationForm from './components/ApplicationForm';
+import SupplyChainView from './components/SupplyChainView';
 
-const ApplicationForm = () => {
-  const [formData, setFormData] = useState({
-    application_id: '',
-    application_name: '',
-    capability_name: '',
-    api_name: '',
-    api_endpoint: '',
-    upstream_applications: [],
-    downstream_applications: [],
-  });
+function App() {
+  const [value, setValue] = React.useState(0);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const addUpstream = () => {
-    setFormData({ ...formData, upstream_applications: [...formData.upstream_applications, ''] });
-  };
-
-  const handleSubmit = async () => {
-    await axios.post('http://localhost:8000/applications', formData);
-    alert('Application saved!');
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
   };
 
   return (
-    <Box>
-      <TextField name="application_id" label="Application ID" onChange={handleChange} />
-      <TextField name="application_name" label="Application Name" onChange={handleChange} />
-      <TextField name="capability_name" label="Capability Name" onChange={handleChange} />
-      <TextField name="api_name" label="API Name" onChange={handleChange} />
-      <TextField name="api_endpoint" label="API Endpoint" onChange={handleChange} />
-      <Button onClick={addUpstream}>Add Upstream App</Button>
-      <Button onClick={handleSubmit}>Save</Button>
-    </Box>
+    <Container maxWidth="lg">
+      <Box sx={{ width: '100%', mt: 3 }}>
+        <Tabs value={value} onChange={handleChange}>
+          <Tab label="Add Application" />
+          <Tab label="View Supply Chain" />
+        </Tabs>
+        <Box sx={{ mt: 2 }}>
+          {value === 0 && <ApplicationForm />}
+          {value === 1 && <SupplyChainView />}
+        </Box>
+      </Box>
+    </Container>
   );
-};
+}
 
-export default ApplicationForm;
+export default App;
