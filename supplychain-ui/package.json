@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@mui/material": "^6.4.6",
+    "axios": "^1.8.1",
+    "vis-react": "^0.5.1"
+  }
+}
