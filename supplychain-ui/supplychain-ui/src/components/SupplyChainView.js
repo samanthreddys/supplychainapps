@@ -39,8 +39,8 @@ const SupplyChainView = () => {
     try {
       const response = await axios.get('http://localhost:5000/api/applications');
       const uniqueApps = response.data.reduce((acc, current) => {
-        const x = acc.find(item => item.applicationName === current.applicationName);
-        if (!x) {
+        const x = acc.find(item => item.applicationId === current.applicationId);
+        if (!x && current.applicationName) {  // Only add if name exists
           return acc.concat([current]);
         }
         return acc;
@@ -75,8 +75,10 @@ const SupplyChainView = () => {
     setSelectedApp(newAppId);
     if (newAppId) {
       const selectedApplication = applications.find(app => app.applicationId === newAppId);
-      updateNavigationHistory(selectedApplication);
-      fetchSupplyChain(newAppId);
+      if (selectedApplication) {
+        updateNavigationHistory(selectedApplication);
+        fetchSupplyChain(newAppId);
+      }
     } else {
       setNodes([]);
       setEdges([]);
@@ -86,14 +88,13 @@ const SupplyChainView = () => {
   };
 
   const updateNavigationHistory = (app) => {
-    if (!app) return;
+    if (!app || !app.applicationId || !app.applicationName) return;
     
     setNavigationHistory(prev => {
       const newHistory = [...prev];
       const existingIndex = newHistory.findIndex(item => item.id === app.applicationId);
       
       if (existingIndex !== -1) {
-        // Remove everything after the existing item
         newHistory.splice(existingIndex + 1);
       } else {
         newHistory.push({
@@ -111,25 +112,17 @@ const SupplyChainView = () => {
   };
 
   const onNodeClick = async (event, node) => {
-    // Prevent re-fetching for the same app
     if (node.id === selectedApp) {
       return;
     }
 
     try {
-      // Update selected app and fetch its supply chain
       setSelectedApp(node.id);
       const clickedApp = applications.find(app => app.applicationId === node.id);
       
       if (clickedApp) {
-        // Update navigation history
         updateNavigationHistory(clickedApp);
-        
-        // Fetch and display the supply chain for clicked app
-        const response = await axios.get(`http://localhost:5000/api/applications/${node.id}/supply-chain`);
-        if (response.data) {
-          renderSupplyChain(response.data);
-        }
+        await fetchSupplyChain(node.id);
       }
     } catch (error) {
       console.error('Error handling node click:', error);
@@ -307,7 +300,7 @@ const SupplyChainView = () => {
                 key={app.applicationId} 
                 value={app.applicationId}
               >
-                {app.applicationName || 'Unknown Application'}
+                {app.applicationName}
               </MenuItem>
             ))}
           </Select>
