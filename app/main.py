@@ -134,26 +134,22 @@ async def get_applications():
         with db.driver.session() as session:
             result = session.run("""
                 MATCH (a:Application)
-                RETURN DISTINCT 
-                    a.applicationId as applicationId,
-                    a.applicationName as applicationName
-                ORDER BY a.applicationName
+                WHERE a.applicationName IS NOT NULL
+                RETURN DISTINCT {
+                    applicationId: a.applicationId,
+                    applicationName: a.applicationName
+                } as application
+                ORDER BY application.applicationName
             """)
 
-            # Create a dictionary to handle duplicates
-            unique_apps = {}
+            applications = []
             for record in result:
-                app_name = record["applicationName"]
-                app_id = record["applicationId"]
-                if app_name not in unique_apps:
-                    unique_apps[app_name] = {
-                        "applicationId": app_id,
-                        "applicationName": app_name
-                    }
-
-            # Convert to list and sort by application name
-            applications = list(unique_apps.values())
-            applications.sort(key=lambda x: x["applicationName"])
+                app_data = record["application"]
+                if app_data["applicationId"] and app_data["applicationName"]:  # Ensure both values exist
+                    applications.append({
+                        "applicationId": app_data["applicationId"],
+                        "applicationName": app_data["applicationName"]
+                    })
 
             return applications
 
@@ -183,15 +179,15 @@ async def test_endpoint():
 async def get_application_apis(app_id: str):
     try:
         with db.driver.session() as session:
-            # Corrected query syntax
+            # Modified query to ensure we get all API-related fields
             result = session.run("""
                 MATCH (a:Application {applicationId: $appId})
-                WHERE a.apiName IS NOT NULL
                 RETURN DISTINCT {
                     apiName: a.apiName,
                     apiEndpoint: a.apiEndpoint
                 } as api
-                ORDER BY api.apiName
+                WHERE a.apiName IS NOT NULL
+                ORDER BY a.apiName
             """, appId=app_id)
 
             apis = []
@@ -216,44 +212,32 @@ async def get_api_supply_chain(app_id: str, apiName: str):
     try:
         with db.driver.session() as session:
             result = session.run("""
-                MATCH (main:Application {applicationId: $appId})
-                WHERE main.apiName = $apiName
-
-                // Find upstream apps that provide this API
-                OPTIONAL MATCH (upstream:Application)-[:PROVIDES_TO]->(consumer)
-                WHERE upstream.apiName = $apiName
-
-                // Find downstream apps that consume this API
-                OPTIONAL MATCH (provider)-[:PROVIDES_TO]->(downstream:Application)
-                WHERE provider.apiName = $apiName
-
+                MATCH (main:Application {applicationId: $appId, apiName: $apiName})
+                OPTIONAL MATCH (upstream:Application)-[:PROVIDES_TO]->(main)
+                OPTIONAL MATCH (main)-[:PROVIDES_TO]->(downstream:Application)
+                WHERE upstream.apiName = $apiName OR downstream.apiName = $apiName
                 RETURN {
                     applicationId: main.applicationId,
                     applicationName: main.applicationName,
                     apiName: main.apiName,
-                    apiEndpoint: main.apiEndpoint,
-                    capabilityName: main.capabilityName
+                    apiEndpoint: main.apiEndpoint
                 } as mainApp,
-                collect(DISTINCT {
+                collect(distinct {
                     applicationId: upstream.applicationId,
                     applicationName: upstream.applicationName,
                     apiName: upstream.apiName,
-                    apiEndpoint: upstream.apiEndpoint,
-                    capabilityName: upstream.capabilityName,
-                    consumedBy: consumer.applicationName
+                    apiEndpoint: upstream.apiEndpoint
                 }) as upstreamApps,
-                collect(DISTINCT {
+                collect(distinct {
                     applicationId: downstream.applicationId,
                     applicationName: downstream.applicationName,
                     apiName: downstream.apiName,
-                    apiEndpoint: downstream.apiEndpoint,
-                    capabilityName: downstream.capabilityName,
-                    providedBy: provider.applicationName
+                    apiEndpoint: downstream.apiEndpoint
                 }) as downstreamApps
             """, appId=app_id, apiName=apiName)
 
             data = result.single()
-            if not data or not data["mainApp"]:
+            if not data:
                 raise HTTPException(status_code=404, detail="Application or API not found")
 
             return {

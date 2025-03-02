@@ -1,29 +1,46 @@
 import React from 'react';
-import { Container, Box, Tabs, Tab } from '@mui/material';
-import ApplicationForm from './components/ApplicationForm';
+import { BrowserRouter as Router, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import SupplyChainView from './components/SupplyChainView';
+import ApplicationForm from './components/ApplicationForm';
+import { AppBar, Toolbar, Typography, Button, Box, Container } from '@mui/material';
 
 function App() {
-  const [value, setValue] = React.useState(0);
-
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
-
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ width: '100%', mt: 3 }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab label="Add Application" />
-          <Tab label="View Supply Chain" />
-        </Tabs>
-        <Box sx={{ mt: 2 }}>
-          {value === 0 && <ApplicationForm />}
-          {value === 1 && <SupplyChainView />}
-        </Box>
+    <Router>
+      <Box sx={{ flexGrow: 1 }}>
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Supply Chain Management
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button 
+                color="inherit" 
+                component={RouterLink} 
+                to="/"
+              >
+                View Supply Chain
+              </Button>
+              <Button 
+                color="inherit" 
+                component={RouterLink} 
+                to="/add-application"
+              >
+                Add Application
+              </Button>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        <Container maxWidth="lg" sx={{ mt: 4 }}>
+          <Routes>
+            <Route path="/" element={<SupplyChainView />} />
+            <Route path="/add-application" element={<ApplicationForm />} />
+          </Routes>
+        </Container>
       </Box>
-    </Container>
+    </Router>
   );
 }
 
-export default App;
+export default App; 
